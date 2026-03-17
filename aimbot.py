@@ -1,64 +1,64 @@
+import pygame
 import math
-import time
 from game import BBTAN, Block
 
-def get_best_angle(real_game):
-    best_angle = -math.pi / 2  # Domyślnie prosto w górę
-    max_damage_score = -1
+def get_aimbot_move(real_game):
+    """
+    Aimbot symuluje opcje (co 5 stopni) i zwraca najlepszy kąt.
+    """
+    best_angle = -math.pi / 2
+    max_reward = -float('inf')
 
-    print("Symulowanie trajektorii...")
-    
-    # Testujemy kąty od 15 do 165 stopni (skok co 5 stopni)
-    # Im mniejszy skok (np. co 1 stopień), tym bot celniejszy, ale myśli dłużej!
+    # Testujemy kąty od 15 do 165 stopni
     for deg in range(15, 166, 5):
         test_angle_rad = -math.pi * deg / 180.0
         
-        # 1. Tworzymy "klona" gry (render_mode=False, żeby działało błyskawicznie w tle)
+        # Tworzymy "klon" obecnego stanu gry w tle (bez grafiki)
         sim = BBTAN(render_mode=False)
-        
-        # 2. Kopiujemy idealnie stan z prawdziwej gry do symulacji
         sim.level = real_game.level
         sim.max_balls = real_game.max_balls
         sim.start_x = real_game.start_x
         sim.start_y = real_game.start_y
         sim.done = real_game.done
         
+        # Kopiujemy dokładne pozycje i HP klocków
         sim.blocks = []
         for b in real_game.blocks:
-            # Tworzymy nowe obiekty klocków, żeby nie zepsuć prawdziwej planszy
             new_b = Block(b.col, b.row, b.hp)
             new_b.rect.x = b.rect.x
             new_b.rect.y = b.rect.y
             sim.blocks.append(new_b)
             
-        # 3. Odpalamy symulację JEDNEJ tury dla tego kąta
-        # step() z game.py zwraca nagrodę (reward), która jest wyższa, im więcej HP zbijemy
+        # Symulujemy JEDEN pełny strzał w tej alternatywnej rzeczywistości
         _, reward, _, _ = sim.step(test_angle_rad)
         
-        # 4. Sprawdzamy, czy ten strzał był najlepszy
-        if reward > max_damage_score:
-            max_damage_score = reward
+        # Zapisujemy kąt, który dał najwięcej punktów
+        if reward > max_reward:
+            max_reward = reward
             best_angle = test_angle_rad
             
-    return best_angle, max_damage_score
+    return best_angle
 
-# ==========================================
-# GŁÓWNA PĘTLA GRY
-# ==========================================
-if __name__ == "__main__":
-    # Uruchamiamy prawdziwą grę (widoczną na ekranie)
-    env = BBTAN(render_mode=True)
+def play() -> None:
+    print("Uruchamianie Aimbota...")
     
-    while not env.done:
-        # Obliczamy najlepszy ruch
-        start_time = time.time()
-        best_angle, expected_score = get_best_angle(env)
-        calc_time = time.time() - start_time
+    game = BBTAN(render_mode=True)
+    done = False
+    
+    while not done:
+        # Aimbot analizuje planszę i wybiera kąt
+        best_angle = get_aimbot_move(game)
         
-        angle_deg = abs(math.degrees(best_angle))
-        print(f"Najlepszy kąt: {angle_deg:.1f}° | Spodziewany wynik: {expected_score:.1f} | Czas myślenia: {calc_time:.2f}s")
+        # Strike line calculations for visualization
+        end_x = game.start_x + math.cos(best_angle) * 150
+        end_y = game.start_y + math.sin(best_angle) * 150
+        pygame.draw.line(game.screen, (0, 255, 0), (game.start_x, game.start_y), (end_x, end_y), 3)
+        pygame.display.flip()
         
-        # Wykonujemy prawdziwy strzał!
-        env.step(best_angle)
+        # Oddajemy strzał w głównej grze
+        state, reward, done, info = game.step(best_angle)
         
-    print(f"Koniec gry! Agent dotarł do poziomu {env.level}")
+        print(f"Linia: {game.level - 1} | Oddano strzał pod kątem: {math.degrees(best_angle):.1f}°")
+
+    print(f"\nGra zakończona! Aimbot dotarł do {game.level - 1} poziomu.")
+    game.close()

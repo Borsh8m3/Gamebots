@@ -1,3 +1,10 @@
+################################################
+#                                              #
+#   This sample game has been created by       #
+#     self created AI Multi-Agents Team        #
+#  https://github.com/Borsh8m3/AI_agents_team  #
+################################################     
+
 import pygame
 import math
 import random
@@ -63,10 +70,6 @@ class Ball:
 
 class BBTAN:
     def __init__(self, render_mode=False):
-        """
-        render_mode: Ustaw na True, jeśli chcesz widzieć okienko gry.
-        Dla szybkiego trenowania w tle zostaw False.
-        """
         self.render_mode = render_mode
         self.width = WIDTH
         self.height = HEIGHT
@@ -79,6 +82,26 @@ class BBTAN:
             self.font = pygame.font.SysFont(None, 24)
         
         self.reset()
+
+    def get_params(self):
+        current_level = self.level
+        blocks_on_screen = len(self.blocks)
+        total_hp_on_screen = sum(b.hp for b in self.blocks)
+        
+        if blocks_on_screen > 0:
+            lowest_block_row = max(b.row for b in self.blocks)
+            distance_to_ground = 10 - lowest_block_row
+        else:
+            distance_to_ground = 10
+            
+        # ZWRACAMY CZYSTY SŁOWNIK (bez list!)
+        return {
+            'Level': current_level,
+            'Floor': distance_to_ground,
+            'Blocks': blocks_on_screen,
+            'Blocks_HP': total_hp_on_screen
+        }
+
 
     def reset(self):
         """Resetuje grę do stanu początkowego i zwraca pierwszą obserwację."""
@@ -94,7 +117,6 @@ class BBTAN:
         return self._get_state()
 
     def _spawn_row(self):
-        """Obniża klocki i generuje nowy rząd. Sprawdza warunek przegranej."""
         # Przesuń istniejące klocki w dół
         for b in self.blocks:
             b.rect.y += BLOCK_SIZE

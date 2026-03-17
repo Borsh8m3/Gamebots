@@ -1,38 +1,39 @@
 import os
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
-from agent import BBTAN
-
-os.makedirs("models", exist_ok=True)
+from agent import BBTANGymEnv 
 
 if __name__ == "__main__":
     print("Inicjalizacja środowiska...")
-    env = BBTAN(render_mode=False)
+    env = BBTANGymEnv(render_mode=False)
     
-    model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./ppo_bbtan_tensorboard/")
-    TIMESTEPS = 100000 
+    # 1. Ładujemy istniejący mózg z pliku .zip
+    # Ważne: musimy mu od razu przypisać środowisko (env=env)
+    model_path = "models/ppo_bbtan_model" # bez .zip na końcu, biblioteka sama to ogarnie
     
-    # 1. Autozapis: Tworzymy callback, który co 10 000 kroków zapisze model do folderu 'models'
-    # Dzięki temu nawet jeśli odetną prąd, masz kopię zapasową!
+    print(f"Wczytywanie starego modelu z {model_path}.zip...")
+    model = PPO.load(model_path, env=env, tensorboard_log="./ppo_bbtan_tensorboard/")
+    
+    TIMESTEPS = 20000 # Ile KOLEJNYCH kroków chcemy go douczyć
+    
     checkpoint_callback = CheckpointCallback(
-        save_freq=10000, 
+        save_freq=5000, 
         save_path='./models/',
-        name_prefix='bbtan_checkpoint'
+        name_prefix='bbtan_checkpoint_v2' # Zmieniamy nazwę, żeby odróżnić nowe checkpointy
     )
     
-    print(f"Rozpoczynam trening na {TIMESTEPS} kroków...")
+    print(f"Wznawiam trening na kolejne {TIMESTEPS} kroków...")
     
-    # 2. Zabezpieczenie przed przerwaniem (try/except)
     try:
-        # Dodajemy nasz callback do funkcji uczącej
-        model.learn(total_timesteps=TIMESTEPS, callback=checkpoint_callback)
+        # 2. Po prostu wywołujemy learn() jeszcze raz!
+        # reset_num_timesteps=False sprawi, że w TensorBoardzie wykresy będą 
+        # ładnie kontynuowane, a nie zaczną się od zera.
+        model.learn(total_timesteps=TIMESTEPS, callback=checkpoint_callback, reset_num_timesteps=False)
     except KeyboardInterrupt:
-        # Ten blok wykona się, gdy wciśniesz Ctrl+C w terminalu
-        print("\nTrening przerwany przez użytkownika (Ctrl+C)!")
-        print("Nie martw się, zapisuję obecny stan mózgu agenta...")
+        print("\nPrzerwano! Zapisuję obecny stan...")
     finally:
-        # Ten blok wykona się zawsze na samym końcu (czy przerwano, czy skończono normalnie)
-        model_path = "models/ppo_bbtan_model"
-        model.save(model_path)
-        print(f"Ostateczny model bezpiecznie zapisany w {model_path}.zip")
+        # 3. Zapisujemy zaktualizowany model (możesz nadpisać stary, ale bezpieczniej dodać dopisek v2)
+        new_model_path = "models/ppo_bbtan_model_v2"
+        model.save(new_model_path)
+        print(f"Douczony model zapisano w {new_model_path}.zip")
         env.close()
