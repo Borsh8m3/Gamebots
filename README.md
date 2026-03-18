@@ -1,5 +1,5 @@
 # 🎮 GameBots: Środowisko w Pygame do trenowania i porównywania agentów uczenia nadzorowanego oraz Reinforcement Learning (PPO)
-Zajrzyj na moją strone gdzie dokładnie omawiam cały projekt: https://bit.ly/game_bots
+Checkout my report about this project on my Website: https://bit.ly/game_bots
 
 A BBTAN clone built in Python (Pygame) as an AI sandbox. This project explores and compares different Artificial Intelligence approaches: from pure math (Aimbot) and Machine Learning (Random Forest), up to advanced Reinforcement Learning (PPO).
 
