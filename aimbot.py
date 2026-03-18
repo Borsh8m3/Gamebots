@@ -9,11 +9,9 @@ def get_aimbot_move(real_game):
     best_angle = -math.pi / 2
     max_reward = -float('inf')
 
-    # Testujemy kąty od 15 do 165 stopni
     for deg in range(15, 166, 5):
         test_angle_rad = -math.pi * deg / 180.0
         
-        # Tworzymy "klon" obecnego stanu gry w tle (bez grafiki)
         sim = BBTAN(render_mode=False)
         sim.level = real_game.level
         sim.max_balls = real_game.max_balls
@@ -21,7 +19,6 @@ def get_aimbot_move(real_game):
         sim.start_y = real_game.start_y
         sim.done = real_game.done
         
-        # Kopiujemy dokładne pozycje i HP klocków
         sim.blocks = []
         for b in real_game.blocks:
             new_b = Block(b.col, b.row, b.hp)
@@ -29,10 +26,9 @@ def get_aimbot_move(real_game):
             new_b.rect.y = b.rect.y
             sim.blocks.append(new_b)
             
-        # Symulujemy JEDEN pełny strzał w tej alternatywnej rzeczywistości
         _, reward, _, _ = sim.step(test_angle_rad)
         
-        # Zapisujemy kąt, który dał najwięcej punktów
+        # best shot
         if reward > max_reward:
             max_reward = reward
             best_angle = test_angle_rad
@@ -46,16 +42,14 @@ def play() -> None:
     done = False
     
     while not done:
-        # Aimbot analizuje planszę i wybiera kąt
         best_angle = get_aimbot_move(game)
         
-        # Strike line calculations for visualization
         end_x = game.start_x + math.cos(best_angle) * 150
         end_y = game.start_y + math.sin(best_angle) * 150
         pygame.draw.line(game.screen, (0, 255, 0), (game.start_x, game.start_y), (end_x, end_y), 3)
         pygame.display.flip()
         
-        # Oddajemy strzał w głównej grze
+        # shot
         state, reward, done, info = game.step(best_angle)
         
         print(f"Linia: {game.level - 1} | Oddano strzał pod kątem: {math.degrees(best_angle):.1f}°")
