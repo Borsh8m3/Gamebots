@@ -4,7 +4,6 @@ from stable_baselines3.common.callbacks import CheckpointCallback
 from agent import BBTANGymEnv 
 
 if __name__ == "__main__":
-    print("Inicjalizacja środowiska...")
     env = BBTANGymEnv(render_mode=False)
     
     # 1. Ładujemy istniejący mózg z pliku .zip
