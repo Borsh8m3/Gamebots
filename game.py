@@ -9,7 +9,6 @@ import pygame
 import math
 import random
 
-# Ustawienia stałe
 WIDTH, HEIGHT = 400, 600
 BG_COLOR = (26, 26, 36)
 BLOCK_COLOR = (150, 50, 200)
@@ -49,7 +48,6 @@ class Ball:
         self.y += self.vy
         self.rect.center = (int(self.x), int(self.y))
 
-        # Odbicia od ścian
         if self.rect.left <= 0:
             self.rect.left = 0
             self.x = self.rect.centerx
@@ -80,6 +78,7 @@ class BBTAN:
             pygame.display.set_caption("BBTAN")
             self.clock = pygame.time.Clock()
             self.font = pygame.font.SysFont(None, 24)
+            self.large_font = pygame.font.SysFont(None, 48)
         
         self.reset()
 
@@ -89,12 +88,10 @@ class BBTAN:
         total_hp_on_screen = sum(b.hp for b in self.blocks)
         
         if blocks_on_screen > 0:
-            lowest_block_row = max(b.row for b in self.blocks)
-            distance_to_ground = 10 - lowest_block_row
+            distance_to_ground = 10 - max(b.row for b in self.blocks)
         else:
             distance_to_ground = 10
             
-        # ZWRACAMY CZYSTY SŁOWNIK (bez list!)
         return {
             'Level': current_level,
             'Floor': distance_to_ground,
@@ -102,9 +99,7 @@ class BBTAN:
             'Blocks_HP': total_hp_on_screen
         }
 
-
     def reset(self):
-        """Resetuje grę do stanu początkowego i zwraca pierwszą obserwację."""
         self.level = 1
         self.max_balls = 1
         self.blocks = []
@@ -117,15 +112,13 @@ class BBTAN:
         return self._get_state()
 
     def _spawn_row(self):
-        # Przesuń istniejące klocki w dół
         for b in self.blocks:
             b.rect.y += BLOCK_SIZE
             b.row += 1
             if b.rect.bottom > self.height - 40:
-                self.done = True # Klocek dotknął dołu - koniec gry
+                self.done = True 
         
         if not self.done:
-            # Generuj nowy rząd
             for c in range(COLS):
                 if random.random() > 0.5:
                     self.blocks.append(Block(c, 0, self.level))
@@ -134,31 +127,18 @@ class BBTAN:
             self.level += 1
 
     def _get_state(self):
-        """
-        Zwraca stan gry ('oczy' agenta). 
-        Zwracamy prostą macierz (listę list) reprezentującą planszę.
-        """
-        # Plansza 10 wierszy na 7 kolumn (można dostosować)
         grid = [[0 for _ in range(COLS)] for _ in range(10)]
-        
         for b in self.blocks:
             if b.row < 10:
                 grid[b.row][b.col] = b.hp
                 
-        # Agent dostaje planszę, pozycję startową X oraz liczbę kulek
-        state = {
+        return {
             "grid": grid,
             "start_x": self.start_x,
             "balls": self.max_balls
         }
-        return state
 
     def step(self, action_angle):
-        """
-        Wykonuje pełną turę gry dla zadanego kąta strzału.
-        action_angle: Kąt strzału w radianach (np. od -math.pi do 0)
-        Zwraca: (stan, nagroda, czy_koniec, info)
-        """
         if self.done:
             return self._get_state(), 0, self.done, {}
 
@@ -169,16 +149,13 @@ class BBTAN:
         turn_over = False
         reward = 0
 
-        # Wewnętrzna pętla symulująca całą turę fizyki w "jednym kroku" agenta
         while not turn_over:
             shoot_timer += 1
             
-            # Wystrzeliwanie nowych kulek
             if shoot_timer % 4 == 0 and balls_to_shoot > 0:
                 balls.append(Ball(self.start_x, self.start_y, action_angle))
                 balls_to_shoot -= 1
 
-            # Fizyka i kolizje
             all_returned = True
             for ball in balls:
                 if not ball.active: continue
@@ -188,10 +165,10 @@ class BBTAN:
                 for b in self.blocks[:]:
                     if ball.rect.colliderect(b.rect):
                         b.hp -= 1
-                        reward += 0.1  # Mała nagroda za trafienie klocka
+                        reward += 0.1  
                         if b.hp <= 0:
                             self.blocks.remove(b)
-                            reward += 1.0  # Duża nagroda za zniszczenie klocka
+                            reward += 1.0  
                         
                         overlap_left = ball.rect.right - b.rect.left
                         overlap_right = b.rect.right - ball.rect.left
@@ -210,30 +187,29 @@ class BBTAN:
                     if first_return_x is None:
                         first_return_x = ball.x
 
-            # Jeśli wymuszono renderowanie podczas symulacji tury
             if self.render_mode:
                 self._render_frame(balls)
 
-            # Koniec tury
             if balls_to_shoot == 0 and all_returned:
                 turn_over = True
 
-        # Po zakończeniu tury ustaw nową pozycję i wygeneruj nowy rząd
         if first_return_x is not None:
             self.start_x = max(BALL_RADIUS, min(self.width - BALL_RADIUS, first_return_x))
             
         self._spawn_row()
 
         if self.done:
-            reward -= 10.0  # Kara za śmierć
+            reward -= 10.0  
         else:
-            reward += 1.0   # Nagroda za przetrwanie tury
+            reward += 1.0   
             self.score += 1
 
         return self._get_state(), reward, self.done, {"score": self.score}
 
-    def _render_frame(self, balls):
-        """Prywatna metoda rysująca klatkę gry."""
+    def _render_frame(self, balls=None):
+        if balls is None:
+            balls = []
+            
         self.screen.fill(BG_COLOR)
         
         for b in self.blocks:
@@ -247,9 +223,59 @@ class BBTAN:
         hud_text = self.font.render(f"LINE: {self.level-1}   Kulki: {self.max_balls-1}", True, TEXT_COLOR)
         self.screen.blit(hud_text, (10, 10))
         
+        if self.done:
+            game_over_text = self.large_font.render("GAME OVER", True, (255, 50, 50))
+            restart_text = self.font.render("Kliknij, aby zrestartowac", True, TEXT_COLOR)
+            self.screen.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT//2 - 20))
+            self.screen.blit(restart_text, (WIDTH//2 - restart_text.get_width()//2, HEIGHT//2 + 30))
+        
         pygame.display.flip()
-        self.clock.tick(120)  # Zwiększone FPS dla szybszego podglądu, agent i tak liczy szybciej
+        self.clock.tick(120)  
 
     def close(self):
         if self.render_mode:
             pygame.quit()
+
+if __name__ == "__main__":
+    game = BBTAN(render_mode=True)
+    running = True
+    aiming = False
+    mouse_pos = (0, 0)
+
+    while running:
+        if not game.done:
+            game._render_frame()
+
+            if aiming:
+                pygame.draw.line(game.screen, (255, 100, 100), (game.start_x, game.start_y), mouse_pos, 2)
+                pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if game.done:
+                    game.reset()
+                else:
+                    aiming = True
+            
+            elif event.type == pygame.MOUSEMOTION:
+                if aiming:
+                    mouse_pos = event.pos
+            
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if aiming and not game.done:
+                    aiming = False
+                    
+                    dx = event.pos[0] - game.start_x
+                    dy = event.pos[1] - game.start_y
+                    
+                    if dy > -10: 
+                        dy = -10
+                        
+                    angle = math.atan2(dy, dx)
+                    
+                    game.step(angle)
+
+    game.close()
